@@ -10,9 +10,9 @@
 
 #define SW_0 9 // left button
 
-#define UART uart0 // LoRa module UART0
-#define UART_TX 0 // UART0 TX (GP0) - to LoRa
-#define UART_RX 1 // UART0 RX (GP1) - from LoRa
+#define UART uart1 // LoRa module UART1
+#define UART_TX 4 // UART0 TX (GP4) - to LoRa
+#define UART_RX 5 // UART0 RX (GP5) - from LoRa
 
 #define BAUD_RATE 9600 // LoRa module UART speed
 
@@ -52,7 +52,7 @@ int main() {
     // Initialize buttons and event queue + interrupt
     ini_button();
 
-    // Initialize UART0 for LoRa module
+    // Initialize UART1 for LoRa module
     uart_init(UART, BAUD_RATE);
     gpio_set_function(UART_TX, GPIO_FUNC_UART);
     gpio_set_function(UART_RX, GPIO_FUNC_UART);
