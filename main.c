@@ -123,8 +123,6 @@ void ini_button() {
     // Configure button interrupt and callback
     gpio_set_irq_enabled_with_callback(SW_0, GPIO_IRQ_EDGE_FALL |
         GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
-
-
 }
 
 // Send "AT" command and check if module responds with a line that contains "OK"
@@ -185,10 +183,11 @@ bool read_line(char *buffer, const int len, const int timeout_ms) {
         int i = 0;
         while (i < len) {
             const char c = uart_getc(UART);
-            if (c == '\n')
-                break; // End of line
-            if (c != '\r') // Ignore carriage return
-                buffer[i++] = c;
+            if (c != '\n') {
+                if (c != '\r') // Ignore carriage return
+                    buffer[i++] = c;
+            }
+            else break; // End of line
         }
         buffer[i] = '\0'; // Null-terminate resulting string
         return true;
@@ -199,16 +198,18 @@ bool read_line(char *buffer, const int len, const int timeout_ms) {
 
 // Convert DevEui response line into hex string and print it
 void convert_and_print(const char *line) {
-    const char *line_after_comma = strchr(line, ',');
-    line_after_comma += 2;
+    const char *line_after_comma = strchr(line, ','); // Find comma after "DevEui"
+    line_after_comma += 2; // Skip ", " to point at first hex digit
     const int len = (int)strlen(line_after_comma);
-    char current_hexadecimal[5];
+    char current_hexadecimal[5]; // Temporary buffer for each grou
     int j = 0;
     for (int i = 0; i <= len; i++) {
+        // Copy characters until ':' or temporary buffer is full
         if (line_after_comma[i] != ':' && j < 4) {
             current_hexadecimal[j++] = line_after_comma[i];
         }
         else {
+            // Terminate current group and print it
             current_hexadecimal[j] = '\0';
             printf("%s", current_hexadecimal);
             j = 0;
