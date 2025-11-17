@@ -1,9 +1,10 @@
 #include <stdio.h>
-#include "hardware/pwm.h"
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
+
 #include "pico/stdlib.h"
+#include "hardware/pwm.h"
 #include "hardware/uart.h"
 #include "hardware/gpio.h"
 #include "pico/util/queue.h"
@@ -19,9 +20,9 @@
 #define LINE_LEN 128 // Maximum line length for UART input buffer
 
 // AT commands for the LoRa-E5 module
-#define CMD_AT "AT\r\n"
-#define CMD_VERSION "AT+VER\r\n"
-#define CMD_DEV_EUI "AT+ID=DevEui\r\n"
+#define CMD_AT "AT"
+#define CMD_VERSION "AT+VER"
+#define CMD_DEV_EUI "AT+ID=DevEui"
 
 #define DEBOUNCE_MS 20 // Debounce delay in milliseconds
 
@@ -38,7 +39,8 @@ typedef struct {
 static queue_t events;
 
 void gpio_callback(uint gpio, uint32_t event_mask);
-void ini_button(); // Initialize button SW_0
+void init_button(); // Initialize button SW_0
+void init_uart(); // Initialize UART
 bool check_connection(); // Send "AT" and verify that the module responds
 bool check_version(); // Read and print firmware version with "AT+VER"
 bool check_dev_eui(); // Read, print, and format DevEui with "AT+ID=DevEui"
@@ -50,15 +52,9 @@ int main() {
     // Initialize chosen serial port
     stdio_init_all();
     // Initialize buttons and event queue + interrupt
-    ini_button();
-
-    // Initialize UART1 for LoRa module
-    uart_init(UART, BAUD_RATE);
-    gpio_set_function(UART_TX, GPIO_FUNC_UART);
-    gpio_set_function(UART_RX, GPIO_FUNC_UART);
-    // Configure UART as 8 data bits, 1 stop bit, no parity (8N1)
-    uart_set_format(UART, 8, 1, UART_PARITY_NONE);
-    uart_set_fifo_enabled(UART, true);
+    init_button();
+    // Initialize UART
+    init_uart();
 
     event_t event;
     while (true) {
@@ -110,7 +106,7 @@ void gpio_callback(uint const gpio, uint32_t const event_mask) {
     }
 }
 
-void ini_button() {
+void init_button() {
     gpio_init(SW_0); // Initialize GPIO pin
     gpio_set_dir(SW_0, GPIO_IN); // Set as input
     gpio_pull_up(SW_0); // Enable internal pull-up resistor (button reads high = true when not pressed)
@@ -123,6 +119,16 @@ void ini_button() {
     // Configure button interrupt and callback
     gpio_set_irq_enabled_with_callback(SW_0, GPIO_IRQ_EDGE_FALL |
         GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
+}
+
+void init_uart() {
+    // Initialize UART1 for LoRa module
+    uart_init(UART, BAUD_RATE);
+    gpio_set_function(UART_TX, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX, GPIO_FUNC_UART);
+    // Configure UART as 8 data bits, 1 stop bit, no parity (8N1)
+    uart_set_format(UART, 8, 1, UART_PARITY_NONE);
+    uart_set_fifo_enabled(UART, true);
 }
 
 // Send "AT" command and check if module responds with a line that contains "OK"
@@ -173,6 +179,8 @@ void write_str(const char *string) {
     while (*string) {
         uart_putc_raw(UART, *string++);
     }
+    uart_putc_raw(UART, '\r');
+    uart_putc_raw(UART, '\n');
 }
 
 // Read a single line from UART into buffer with timeout
@@ -201,7 +209,7 @@ void convert_and_print(const char *line) {
     const char *line_after_comma = strchr(line, ','); // Find comma after "DevEui"
     line_after_comma += 2; // Skip ", " to point at first hex digit
     const int len = (int)strlen(line_after_comma);
-    char current_hexadecimal[5]; // Temporary buffer for each grou
+    char current_hexadecimal[5]; // Temporary buffer for each group
     int j = 0;
     for (int i = 0; i <= len; i++) {
         // Copy characters until ':' or temporary buffer is full
