@@ -16,7 +16,9 @@ bool read_line(char *buffer, const int len, const int timeout_ms) {
     if (uart_is_readable_within_us(UART, us)) {
         int i = 0;
         while (i < len -1) {
-            const char c = uart_getc(UART);
+            //const char c = getchar_timeout_us(UART);
+            //const char c = uart_getc(UART);
+            const char c = get_c(UART);
             if (c != '\n') {
                 if (c != '\r') // Ignore carriage return
                     buffer[i++] = c;
@@ -50,4 +52,19 @@ void convert_and_print(const char *line) {
         }
     }
     printf("\r\n");
+}
+
+static inline void uart_read(uart_inst_t *uart, uint8_t *dst, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (uart_is_readable_within_us(uart, 500 * 10)) {
+            tight_loop_contents();
+        }
+        *dst++ = (uint8_t) uart_get_hw(uart)->dr;
+    }
+}
+
+static inline char get_c(uart_inst_t *uart) {
+    char c;
+    uart_read(uart, (uint8_t *) &c, 1);
+    return c;
 }
