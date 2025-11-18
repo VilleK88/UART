@@ -189,7 +189,7 @@ bool read_line(char *buffer, const int len, const int timeout_ms) {
     // Wait for data to become available within timeout
     if (uart_is_readable_within_us(UART, us)) {
         int i = 0;
-        while (i < len) {
+        while (i < len -1) {
             const char c = uart_getc(UART);
             if (c != '\n') {
                 if (c != '\r') // Ignore carriage return
