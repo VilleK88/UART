@@ -69,13 +69,13 @@ int main() {
                     if (check_version()) {
                         // 3. Read and process DevEui
                         if (!check_dev_eui())
-                            printf("Module not responding\r\n");
+                            printf("Module stopped responding\r\n");
                     }
                     else
-                        printf("Module not responding\r\n");
+                        printf("Module stopped responding\r\n");
                 }
                 else
-                    printf("Module not responding\r\n");
+                    printf("Module stopped responding\r\n");
             }
         }
 
@@ -214,7 +214,7 @@ void convert_and_print(const char *line) {
     for (int i = 0; i <= len; i++) {
         // Copy characters until ':' or temporary buffer is full
         if (line_after_comma[i] != ':' && j < 4) {
-            current_hexadecimal[j++] = line_after_comma[i];
+            current_hexadecimal[j++] = tolower((unsigned char)line_after_comma[i]);
         }
         else {
             // Terminate current group and print it
