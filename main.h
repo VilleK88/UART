@@ -5,13 +5,12 @@
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
+
 #include "utils/uart_states.h"
-#include "utils/tools.h"
 
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
 #include "hardware/uart.h"
-#include "hardware/gpio.h"
 #include "pico/util/queue.h"
 
 #define SW_0 9 // left button

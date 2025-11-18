@@ -25,9 +25,8 @@ int main() {
             }
         }
 
-        if (start_st) {
+        if (start_st)
             run_uart_sm(&tsm, &start_st);
-        }
 
         sleep_ms(10); // 10 ms delay (0.01 second) to reduce CPU usage
     }
@@ -79,127 +78,4 @@ void init_uart() {
     // Configure UART as 8 data bits, 1 stop bit, no parity (8N1)
     uart_set_format(UART, 8, 1, UART_PARITY_NONE);
     uart_set_fifo_enabled(UART, true);
-}
-
-void run_uart_sm(uart_sm *smi, bool *continue_loop) {
-    switch (smi->state) {
-        case check_connection_st:
-            if (check_connection()) {
-                printf("Connected to LoRa module\r\n");
-                smi->state = check_version_st;
-            }
-            else smi->state = stop_st;
-            break;
-        case check_version_st:
-            if (check_version())
-                smi->state = check_dev_eui_st;
-            else smi->state = stop_st;
-            break;
-        case check_dev_eui_st:
-            if (check_dev_eui()) {
-                smi->state = check_connection_st;
-                *continue_loop = false;
-            }
-            else smi->state = stop_st;
-            break;
-        case stop_st:
-            printf("Module stopped responding\r\n");
-            smi->state = check_connection_st;
-            *continue_loop = false;
-    }
-}
-
-// Send "AT" command and check if module responds with a line that contains "OK"
-// Tries up to 5 times, each with a 500 ms timeout
-bool check_connection() {
-    char line[LINE_LEN];
-    for (int i = 0; i < 5; i++) {
-        write_str(CMD_AT);
-        if (read_line(line, sizeof(line), 500)) {
-            if (strstr(line, "OK") != NULL)
-                return true;
-        }
-    }
-    return false;
-}
-
-// Send "AT+VER" and print the firmware version line
-// Returns true if a line containing "VER" is received within timeout
-bool check_version() {
-    char line[LINE_LEN];
-    write_str(CMD_VERSION);
-    if (read_line(line, sizeof(line), 500)) {
-        if (strstr(line, "VER") != NULL) {
-            printf("%s\r\n", line);
-            return true;
-        }
-    }
-    return false;
-}
-
-// Send "AT+ID=DevEui" and print both the raw response and the processed DevEui
-// Returns true if a valid DevEui line is received
-bool check_dev_eui() {
-    char line[LINE_LEN];
-    write_str(CMD_DEV_EUI);
-    if (read_line(line, sizeof(line), 500)) {
-        if (strstr(line, "DevEui") != NULL) {
-            printf("%s\r\n", line);
-            convert_and_print(line);
-            return true;
-        }
-    }
-    return false;
-}
-
-// Send a string to the LoRa module using UART
-void write_str(const char *string) {
-    while (*string) {
-        uart_putc_raw(UART, *string++);
-    }
-    uart_putc_raw(UART, '\r');
-    uart_putc_raw(UART, '\n');
-}
-
-// Read a single line from UART into buffer with timeout
-bool read_line(char *buffer, const int len, const int timeout_ms) {
-    const uint32_t us = timeout_ms * 1000; // convert to microseconds
-    // Wait for data to become available within timeout
-    if (uart_is_readable_within_us(UART, us)) {
-        int i = 0;
-        while (i < len -1) {
-            const char c = uart_getc(UART);
-            if (c != '\n') {
-                if (c != '\r') // Ignore carriage return
-                    buffer[i++] = c;
-            }
-            else break; // End of line
-        }
-        buffer[i] = '\0'; // Null-terminate resulting string
-        return true;
-    }
-    // No data received within timeout
-    return false;
-}
-
-// Convert DevEui response line into hex string and print it
-void convert_and_print(const char *line) {
-    const char *line_after_comma = strchr(line, ','); // Find comma after "DevEui"
-    line_after_comma += 2; // Skip ", " to point at first hex digit
-    const int len = (int)strlen(line_after_comma);
-    char current_hexadecimal[5]; // Temporary buffer for each group
-    int j = 0;
-    for (int i = 0; i <= len; i++) {
-        // Copy characters until ':' or temporary buffer is full
-        if (line_after_comma[i] != ':' && j < 4) {
-            current_hexadecimal[j++] = tolower((unsigned char)line_after_comma[i]);
-        }
-        else {
-            // Terminate current group and print it
-            current_hexadecimal[j] = '\0';
-            printf("%s", current_hexadecimal);
-            j = 0;
-        }
-    }
-    printf("\r\n");
 }
