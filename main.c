@@ -1,54 +1,13 @@
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include <ctype.h>
-
-#include "pico/stdlib.h"
-#include "hardware/pwm.h"
-#include "hardware/uart.h"
-#include "hardware/gpio.h"
-#include "pico/util/queue.h"
-
-#define SW_0 9 // left button
-
-#define UART uart1 // LoRa module UART1
-#define UART_TX 4 // UART0 TX (GP4) - to LoRa
-#define UART_RX 5 // UART0 RX (GP5) - from LoRa
-
-#define BAUD_RATE 9600 // LoRa module UART speed
-
-#define LINE_LEN 128 // Maximum line length for UART input buffer
-
-// AT commands for the LoRa-E5 module
-#define CMD_AT "AT"
-#define CMD_VERSION "AT+VER"
-#define CMD_DEV_EUI "AT+ID=DevEui"
-
-#define DEBOUNCE_MS 20 // Debounce delay in milliseconds
-
-// Type of event coming from the interrupt callback
-typedef enum { EVENT_BUTTON } event_type;
-
-// Generic event passed from ISR to main loop through a queue
-typedef struct {
-    event_type type; // EVENT_BUTTON
-    int32_t data; // BUTTON: 1 = press, 0 = release;
-} event_t;
-
-// Global event queue used by ISR (Interrupt Service Routine) and main loop
-static queue_t events;
+#include "main.h"
 
 void gpio_callback(uint gpio, uint32_t event_mask);
 void init_button(); // Initialize button SW_0
 void init_uart(); // Initialize UART
-bool check_connection(); // Send "AT" and verify that the module responds
-bool check_version(); // Read and print firmware version with "AT+VER"
-bool check_dev_eui(); // Read, print, and format DevEui with "AT+ID=DevEui"
-void write_str(const char *string); // Send a null-terminated string over UART
-bool read_line(char *buffer, int len, int timeout_ms); // Read one line from UART with timeout
-void convert_and_print(const char *line); // Convert DevEui response to required format
 
 int main() {
+    uart_sm tsm = { check_connection_st };
+    bool start_st = false;
+
     // Initialize chosen serial port
     stdio_init_all();
     // Initialize buttons and event queue + interrupt
@@ -62,21 +21,12 @@ int main() {
         while (queue_try_remove(&events, &event)) {
             // React only to button press (falling edge event, data == 1)
             if (event.type == EVENT_BUTTON && event.data == 1) {
-                // 1. Check AT connectivity
-                if (check_connection()) {
-                    printf("Connected to LoRa module\r\n");
-                    // 2. Read firmware version
-                    if (check_version()) {
-                        // 3. Read and process DevEui
-                        if (!check_dev_eui())
-                            printf("Module stopped responding\r\n");
-                    }
-                    else
-                        printf("Module stopped responding\r\n");
-                }
-                else
-                    printf("Module stopped responding\r\n");
+                start_st = true;
             }
+        }
+
+        if (start_st) {
+            run_uart_sm(&tsm, &start_st);
         }
 
         sleep_ms(10); // 10 ms delay (0.01 second) to reduce CPU usage
@@ -129,6 +79,34 @@ void init_uart() {
     // Configure UART as 8 data bits, 1 stop bit, no parity (8N1)
     uart_set_format(UART, 8, 1, UART_PARITY_NONE);
     uart_set_fifo_enabled(UART, true);
+}
+
+void run_uart_sm(uart_sm *smi, bool *continue_loop) {
+    switch (smi->state) {
+        case check_connection_st:
+            if (check_connection()) {
+                printf("Connected to LoRa module\r\n");
+                smi->state = check_version_st;
+            }
+            else smi->state = stop_st;
+            break;
+        case check_version_st:
+            if (check_version())
+                smi->state = check_dev_eui_st;
+            else smi->state = stop_st;
+            break;
+        case check_dev_eui_st:
+            if (check_dev_eui()) {
+                smi->state = check_connection_st;
+                *continue_loop = false;
+            }
+            else smi->state = stop_st;
+            break;
+        case stop_st:
+            printf("Module stopped responding\r\n");
+            smi->state = check_connection_st;
+            *continue_loop = false;
+    }
 }
 
 // Send "AT" command and check if module responds with a line that contains "OK"

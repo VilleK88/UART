@@ -24,7 +24,13 @@ add_compile_options(-Wall
 # Tell CMake where to find the executable source file
 add_executable(${PROJECT_NAME} 
     main.c
+        main.h
+        utils/uart_states.c
+        utils/uart_states.h
+        utils/tools.c
+        utils/tools.h
 )
+
 
 # Create map/bin/hex/uf2 files
 pico_add_extra_outputs(${PROJECT_NAME})
