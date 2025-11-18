@@ -2,6 +2,7 @@
 #define UART_STATES_H
 
 #include "../main.h"
+#include "tools.h"
 
 typedef enum {
     check_connection_st,
