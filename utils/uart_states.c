@@ -64,8 +64,7 @@ bool check_dev_eui() {
     if (read_line(line, sizeof(line), 500)) {
         if (strstr(line, "DevEui") != NULL) {
             printf("%s\r\n", line);
-            convert_and_print(line);
-            return true;
+            return convert_and_print(line);
         }
     }
     return false;

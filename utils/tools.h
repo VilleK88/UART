@@ -6,6 +6,6 @@
 
 void write_str(const char *string); // Send a null-terminated string over UART
 bool read_line(char *buffer, int len, int timeout_ms); // Read one line from UART with timeout
-void convert_and_print(const char *line); // Convert DevEui response to required format
+bool convert_and_print(const char *line); // Convert DevEui response to required format
 
 #endif
