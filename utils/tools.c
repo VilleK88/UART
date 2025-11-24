@@ -14,7 +14,7 @@ bool read_line(char *buffer, const int len, const int timeout_ms) {
     const uint32_t us = timeout_ms * 1000; // convert to microseconds
     // Wait for data to become available within timeout
     int i = 0;
-    while (i < len -1) {
+    while (i <= len) {
         if (uart_is_readable_within_us(UART, us)) {
             const char c = uart_getc(UART);
             if (c != '\n') {
