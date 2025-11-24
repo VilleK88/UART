@@ -23,12 +23,10 @@ bool read_line(char *buffer, const int len, const int timeout_ms) {
             }
             else break; // End of line
         }
-        else return false;
+        else return false; // No data received within timeout
     }
     buffer[i] = '\0'; // Null-terminate resulting string
     return true;
-    // No data received within timeout
-    return false;
 }
 
 // Convert DevEui response line into hex string and print it
