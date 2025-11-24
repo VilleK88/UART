@@ -7,22 +7,30 @@ void run_uart_sm(uart_sm *smi, bool *continue_loop) {
                 printf("Connected to LoRa module\r\n");
                 smi->state = check_version_st;
             }
-            else smi->state = stop_st;
+            else {
+                printf("Module not responding\r\n");
+                smi->state = stop_st;
+            }
             break;
         case check_version_st:
             if (check_version())
                 smi->state = check_dev_eui_st;
-            else smi->state = stop_st;
+            else {
+                printf("Module stopped responding\r\n");
+                smi->state = stop_st;
+            }
             break;
         case check_dev_eui_st:
             if (check_dev_eui()) {
                 smi->state = check_connection_st;
                 *continue_loop = false;
             }
-            else smi->state = stop_st;
+            else {
+                printf("Module stopped responding\r\n");
+                smi->state = stop_st;
+            }
             break;
         case stop_st:
-            printf("Module stopped responding\r\n");
             smi->state = check_connection_st;
             *continue_loop = false;
     }
